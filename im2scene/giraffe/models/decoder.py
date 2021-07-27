@@ -1,4 +1,3 @@
-
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
@@ -53,17 +52,17 @@ class Decoder(nn.Module):
         self.n_blocks = n_blocks
         self.n_blocks_view = n_blocks_view
 
-        assert(positional_encoding in ('normal', 'gauss'))
+        assert (positional_encoding in ('normal', 'gauss'))
         self.positional_encoding = positional_encoding
         if positional_encoding == 'gauss':
             np.random.seed(42)
             # remove * 2 because of cos and sin
             self.B_pos = gauss_std * \
-                torch.from_numpy(np.random.randn(
-                    1,  gauss_dim_pos * 3, 3)).float().cuda()
+                         torch.from_numpy(np.random.randn(
+                             1, gauss_dim_pos * 3, 3)).float().cuda()
             self.B_view = gauss_std * \
-                torch.from_numpy(np.random.randn(
-                    1,  gauss_dim_view * 3, 3)).float().cuda()
+                          torch.from_numpy(np.random.randn(
+                              1, gauss_dim_view * 3, 3)).float().cuda()
             dim_embed = 3 * gauss_dim_pos * 2
             dim_embed_view = 3 * gauss_dim_view * 2
         else:
@@ -138,7 +137,7 @@ class Decoder(nn.Module):
                 net = net + self.fc_z_skips[skip_idx](z_shape).unsqueeze(1)
                 net = net + self.fc_p_skips[skip_idx](p)
                 skip_idx += 1
-        sigma_out = self.sigma_out(net).squeeze(-1)
+        sigma_out = self.sigma_out(net).squeeze(-1)  # volume density prediction
 
         net = self.feat_view(net)
         net = net + self.fc_z_view(z_app).unsqueeze(1)
@@ -150,7 +149,7 @@ class Decoder(nn.Module):
             if self.n_blocks_view > 1:
                 for layer in self.blocks_view:
                     net = a(layer(net))
-        feat_out = self.feat_out(net)
+        feat_out = self.feat_out(net)  # feature field output
 
         if self.final_sigmoid_activation:
             feat_out = torch.sigmoid(feat_out)

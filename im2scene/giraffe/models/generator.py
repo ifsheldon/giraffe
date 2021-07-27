@@ -476,6 +476,7 @@ class Generator(nn.Module):
             sigma[object_existance == 0] = 0.
             sigma = sigma.reshape(*sigma_shape)
 
+        # TODO: check the compositing and getting volume weights
         # Composite
         sigma_sum, feat_weighted = self.composite_function(sigma, feat)
 
