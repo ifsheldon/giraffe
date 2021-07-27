@@ -4,7 +4,6 @@ from im2scene import gan2d, giraffe
 import logging
 import os
 
-
 # method directory; for this project we only use giraffe
 method_dict = {
     'gan2d': gan2d,
@@ -69,9 +68,12 @@ def get_model(cfg, device=None, len_dataset=0):
         device (device): pytorch device
         dataset (dataset): dataset
     '''
-    method = cfg['method']
+    method = cfg['method']  # "giraffe" in defaults.yaml
     model = method_dict[method].config.get_model(
-        cfg, device=device, len_dataset=len_dataset)
+        cfg,
+        device=device,
+        len_dataset=len_dataset  # not used in the case of "giraffe"
+    )
     return model
 
 
@@ -102,7 +104,7 @@ def get_trainer(model, optimizer, optimizer_d, cfg, device):
         cfg (dict): config dictionary
         device (device): pytorch device
     '''
-    method = cfg['method']
+    method = cfg['method']  # "giraffe" in defaults.yaml
     set_logger(cfg)
     trainer = method_dict[method].config.get_trainer(
         model, optimizer, optimizer_d, cfg, device)
@@ -133,21 +135,22 @@ def get_dataset(cfg, **kwargs):
         return_category (bool): whether to return model category
     '''
     # Get fields with cfg
-    dataset_name = cfg['data']['dataset_name']
-    dataset_folder = cfg['data']['path']
-    categories = cfg['data']['classes']
-    img_size = cfg['data']['img_size']
+    dataset_name = cfg['data']['dataset_name']  # "images" in defaults.yaml
+    dataset_folder = cfg['data']['path']  # data/comprehensive_cars/images/*.jpg in default.yaml
+    categories = cfg['data']['classes']  # [] in defaults.yaml
+    img_size = cfg['data']['img_size']  # 64 in default.yaml
 
     if dataset_name == 'lsun':
         dataset = data.LSUNClass(dataset_folder, categories, size=img_size,
                                  random_crop=cfg['data']['random_crop'],
                                  use_tanh_range=cfg['data']['use_tanh_range'],
                                  )
-    else:
+    else:  # default.yaml
         dataset = data.ImagesDataset(
-            dataset_folder, size=img_size,
-            use_tanh_range=cfg['data']['use_tanh_range'],
-            celebA_center_crop=cfg['data']['celebA_center_crop'],
-            random_crop=cfg['data']['random_crop'],
+            dataset_folder,
+            size=img_size,
+            use_tanh_range=cfg['data']['use_tanh_range'],  # False in default.yaml
+            celebA_center_crop=cfg['data']['celebA_center_crop'],  # False in default.yaml
+            random_crop=cfg['data']['random_crop'],  # False in default.yaml
         )
     return dataset

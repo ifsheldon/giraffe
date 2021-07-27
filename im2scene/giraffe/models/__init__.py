@@ -2,7 +2,6 @@ import torch.nn as nn
 from im2scene.giraffe.models import (
     decoder, generator, bounding_box_generator, neural_renderer)
 
-
 # Dictionaries
 decoder_dict = {
     'simple': decoder.Decoder,
@@ -56,6 +55,7 @@ class GIRAFFE(nn.Module):
 
     def forward(self, batch_size, **kwargs):
         gen = self.generator_test
+        # if is not testing generator, then use the real generator
         if gen is None:
             gen = self.generator
         return gen(batch_size=batch_size)
@@ -73,5 +73,5 @@ class GIRAFFE(nn.Module):
             device (device): pytorch device
         '''
         model = super().to(device)
-        model._device = device
+        model._device = device  # useless
         return model

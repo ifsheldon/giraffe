@@ -8,6 +8,7 @@ import time
 from im2scene import config
 from im2scene.checkpoints import CheckpointIO
 import logging
+
 logger_py = logging.getLogger(__name__)
 np.random.seed(0)
 torch.manual_seed(0)
@@ -31,16 +32,16 @@ device = torch.device("cuda" if is_cuda else "cpu")
 out_dir = cfg['training']['out_dir']
 backup_every = cfg['training']['backup_every']
 exit_after = args.exit_after
-lr = cfg['training']['learning_rate']
-lr_d = cfg['training']['learning_rate_d']
+lr = cfg['training']['learning_rate']  # generator learning rate
+lr_d = cfg['training']['learning_rate_d']  # discriminator learning rate
 batch_size = cfg['training']['batch_size']
 n_workers = cfg['training']['n_workers']
 t0 = time.time()
 
-model_selection_metric = cfg['training']['model_selection_metric']
+model_selection_metric = cfg['training']['model_selection_metric']  # TODO: ?
 if cfg['training']['model_selection_mode'] == 'maximize':
     model_selection_sign = 1
-elif cfg['training']['model_selection_mode'] == 'minimize':
+elif cfg['training']['model_selection_mode'] == 'minimize':  # default.yaml
     model_selection_sign = -1
 else:
     raise ValueError('model_selection_mode must be '
@@ -58,20 +59,19 @@ train_loader = torch.utils.data.DataLoader(
 
 model = config.get_model(cfg, device=device, len_dataset=len(train_dataset))
 
-
 # Initialize training
-op = optim.RMSprop if cfg['training']['optimizer'] == 'RMSprop' else optim.Adam
-optimizer_kwargs = cfg['training']['optimizer_kwargs']
+opt = optim.RMSprop if cfg['training']['optimizer'] == 'RMSprop' else optim.Adam  # "RMSProp" in default.yaml
+optimizer_kwargs = cfg['training']['optimizer_kwargs']  # {} in default.yaml
 
 if hasattr(model, "generator") and model.generator is not None:
     parameters_g = model.generator.parameters()
 else:
     parameters_g = list(model.decoder.parameters())
-optimizer = op(parameters_g, lr=lr, **optimizer_kwargs)
+optimizer = opt(parameters_g, lr=lr, **optimizer_kwargs)
 
 if hasattr(model, "discriminator") and model.discriminator is not None:
     parameters_d = model.discriminator.parameters()
-    optimizer_d = op(parameters_d, lr=lr_d)
+    optimizer_d = opt(parameters_d, lr=lr_d)
 else:
     optimizer_d = None
 

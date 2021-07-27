@@ -8,6 +8,7 @@ import torch
 from im2scene.training import BaseTrainer
 from tqdm import tqdm
 import logging
+
 logger_py = logging.getLogger(__name__)
 
 
@@ -149,13 +150,13 @@ class Trainer(BaseTrainer):
         x_real = data.get('image').to(self.device)
         loss_d_full = 0.
 
-        x_real.requires_grad_()
-        d_real = discriminator(x_real)
+        x_real.requires_grad_()  # image from real distribution
+        d_real = discriminator(x_real)  # binary label
 
         d_loss_real = compute_bce(d_real, 1)
         loss_d_full += d_loss_real
 
-        reg = 10. * compute_grad2(d_real, x_real).mean()
+        reg = 10. * compute_grad2(d_real, x_real).mean()  # TODO: what is this???
         loss_d_full += reg
 
         with torch.no_grad():
