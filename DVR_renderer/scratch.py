@@ -1,12 +1,13 @@
+import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch
+from scipy.spatial.transform import Rotation as Rot
+
+from im2scene.camera import get_camera_mat, get_random_pose
 from im2scene.common import (
     arange_pixels, image_points_to_world, origin_to_world
 )
-import numpy as np
-from scipy.spatial.transform import Rotation as Rot
-from im2scene.camera import get_camera_mat, get_random_pose, get_camera_pose
 
 
 # noinspection DuplicatedCode
@@ -61,7 +62,7 @@ class Generator(nn.Module):
         self.decoder = decoder.to(device)
         self.background_generator = background_generator.to(device)
         self.bounding_box_generator = bounding_box_generator.to(device)
-        self.neural_renderer = neural_renderer.to(device)
+        self.neural_renderer = None if neural_renderer is None else neural_renderer.to(device)
 
     def forward(self, batch_size=32, mode="training",
                 not_render_background=False,
