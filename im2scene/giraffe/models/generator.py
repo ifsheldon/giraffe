@@ -128,6 +128,7 @@ class Generator(nn.Module):
         n_boxes = self.get_n_boxes()
 
         def sample_z(x): return self.sample_z(x, tmp=tmp)
+
         z_shape_obj = sample_z((batch_size, n_boxes, z_dim))
         z_app_obj = sample_z((batch_size, n_boxes, z_dim))
         z_shape_bg = sample_z((batch_size, z_dim_bg))
@@ -176,7 +177,7 @@ class Generator(nn.Module):
             R_bg = [
                 torch.from_numpy(Rot.from_euler(
                     'z', r_random * 2 * np.pi).as_dcm()
-                ) for i in range(batch_size)]
+                                 ) for i in range(batch_size)]
             R_bg = torch.stack(R_bg, dim=0).reshape(
                 batch_size, 3, 3).float()
         else:
@@ -225,13 +226,17 @@ class Generator(nn.Module):
                                      batch_size=32, to_device=True):
         s, t, R = [], [], []
 
-        def rand_s(): return range_s[0] + \
-            np.random.rand() * (range_s[1] - range_s[0])
+        def rand_s():
+            return range_s[0] + \
+                   np.random.rand() * (range_s[1] - range_s[0])
 
-        def rand_t(): return range_t[0] + \
-            np.random.rand() * (range_t[1] - range_t[0])
-        def rand_r(): return range_r[0] + \
-            np.random.rand() * (range_r[1] - range_r[0])
+        def rand_t():
+            return range_t[0] + \
+                   np.random.rand() * (range_t[1] - range_t[0])
+
+        def rand_r():
+            return range_r[0] + \
+                   np.random.rand() * (range_r[1] - range_r[0])
 
         for i in range(batch_size):
             val_s = [[rand_s(), rand_s(), rand_s()] for j in range(n_boxes)]
@@ -288,7 +293,7 @@ class Generator(nn.Module):
             di.unsqueeze(-1).contiguous() * \
             ray_world.unsqueeze(-2).contiguous()
         r = ray_world.unsqueeze(-2).repeat(1, 1, n_steps, 1)
-        assert(p.shape == r.shape)
+        assert (p.shape == r.shape)
         p = p.reshape(batch_size, -1, 3)
         r = r.reshape(batch_size, -1, 3)
         return p, r
@@ -305,9 +310,9 @@ class Generator(nn.Module):
         ray_i = pixels_world_i - camera_world_i
 
         p_i = camera_world_i.unsqueeze(-2).contiguous() + \
-            di.unsqueeze(-1).contiguous() * ray_i.unsqueeze(-2).contiguous()
+              di.unsqueeze(-1).contiguous() * ray_i.unsqueeze(-2).contiguous()
         ray_i = ray_i.unsqueeze(-2).repeat(1, 1, n_steps, 1)
-        assert(p_i.shape == ray_i.shape)
+        assert (p_i.shape == ray_i.shape)
 
         p_i = p_i.reshape(batch_size, -1, 3)
         ray_i = ray_i.reshape(batch_size, -1, 3)
@@ -323,7 +328,7 @@ class Generator(nn.Module):
                 feat_weighted = feat[ind, torch.arange(bs).reshape(-1, 1, 1),
                                      torch.arange(rs).reshape(
                                          1, -1, 1), torch.arange(ns).reshape(
-                                             1, 1, -1)]
+                    1, 1, -1)]
             else:
                 denom_sigma = torch.sum(sigma, dim=0, keepdim=True)
                 denom_sigma[denom_sigma == 0] = 1e-4
@@ -340,11 +345,11 @@ class Generator(nn.Module):
         dists = torch.cat([dists, torch.ones_like(
             z_vals[..., :1]) * last_dist], dim=-1)
         dists = dists * torch.norm(ray_vector, dim=-1, keepdim=True)
-        alpha = 1.-torch.exp(-F.relu(sigma)*dists)
+        alpha = 1. - torch.exp(-F.relu(sigma) * dists)
         weights = alpha * \
-            torch.cumprod(torch.cat([
-                torch.ones_like(alpha[:, :, :1]),
-                (1. - alpha + 1e-10), ], dim=-1), dim=-1)[..., :-1]
+                  torch.cumprod(torch.cat([
+                      torch.ones_like(alpha[:, :, :1]),
+                      (1. - alpha + 1e-10), ], dim=-1), dim=-1)[..., :-1]
         return weights
 
     def get_object_existance(self, n_boxes, batch_size=32):
@@ -368,9 +373,9 @@ class Generator(nn.Module):
             n_objects[
                 (n_objects_prob >= p_cum) &
                 (n_objects_prob < p_cum + probs[idx_p])
-            ] = obj_n[idx_p]
+                ] = obj_n[idx_p]
             p_cum = p_cum + probs[idx_p]
-            assert(p_cum <= 1.)
+            assert (p_cum <= 1.)
 
         object_existance = np.zeros((batch_size, n_boxes))
         for b_idx in range(batch_size):
@@ -394,7 +399,7 @@ class Generator(nn.Module):
         depth_range = self.depth_range
         batch_size = latent_codes[0].shape[0]
         z_shape_obj, z_app_obj, z_shape_bg, z_app_bg = latent_codes
-        assert(not (not_render_background and only_render_background))
+        assert (not (not_render_background and only_render_background))
 
         # Arange Pixels
         pixels = arange_pixels((res, res), batch_size,
@@ -410,8 +415,8 @@ class Generator(nn.Module):
         ray_vector = pixels_world - camera_world
         # batch_size x n_points x n_steps
         di = depth_range[0] + \
-            torch.linspace(0., 1., steps=n_steps).reshape(1, 1, -1) * (
-                depth_range[1] - depth_range[0])
+             torch.linspace(0., 1., steps=n_steps).reshape(1, 1, -1) * (
+                     depth_range[1] - depth_range[0])
         di = di.repeat(batch_size, n_points, 1).to(device)
         if mode == 'training':
             di = self.add_noise_to_interval(di)
@@ -438,7 +443,7 @@ class Generator(nn.Module):
                 padd = 0.1
                 mask_box = torch.all(
                     p_i <= 1. + padd, dim=-1) & torch.all(
-                        p_i >= -1. - padd, dim=-1)
+                    p_i >= -1. - padd, dim=-1)
                 sigma_i[mask_box == 0] = 0.
 
                 # Reshape
@@ -462,7 +467,7 @@ class Generator(nn.Module):
         sigma = F.relu(torch.stack(sigma, dim=0))
         feat = torch.stack(feat, dim=0)
 
-        if self.sample_object_existance:
+        if self.sample_object_existance:  # False in default.yaml
             object_existance = self.get_object_existance(n_boxes, batch_size)
             # add ones for bg
             object_existance = np.concatenate(
@@ -476,7 +481,6 @@ class Generator(nn.Module):
             sigma[object_existance == 0] = 0.
             sigma = sigma.reshape(*sigma_shape)
 
-        # TODO: check the compositing and getting volume weights
         # Composite
         sigma_sum, feat_weighted = self.composite_function(sigma, feat)
 
@@ -492,7 +496,7 @@ class Generator(nn.Module):
             n_maps = sigma.shape[0]
             acc_maps = []
             for i in range(n_maps - 1):
-                sigma_obj_sum = torch.sum(sigma[i:i+1], dim=0)
+                sigma_obj_sum = torch.sum(sigma[i:i + 1], dim=0)
                 weights_obj = self.calc_volume_weights(
                     di, ray_vector, sigma_obj_sum, last_dist=0.)
                 acc_map = torch.sum(weights_obj, dim=-1, keepdim=True)
