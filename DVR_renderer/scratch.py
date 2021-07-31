@@ -137,24 +137,22 @@ class Generator(nn.Module):
         if self.backround_rotation_range != [0., 0.]:
             bg_r = self.backround_rotation_range
             r_random = bg_r[0] + np.random.rand() * (bg_r[1] - bg_r[0])
-            R_bg = [
-                torch.from_numpy(Rot.from_euler(
-                    'z', r_random * 2 * np.pi).as_dcm()
-                                 ) for i in range(batch_size)]
-            R_bg = torch.stack(R_bg, dim=0).reshape(
+            bg_rotations = [torch.from_numpy(Rot.from_euler('z', r_random * 2 * np.pi).as_dcm())
+                            for _ in range(batch_size)]
+            bg_rotations = torch.stack(bg_rotations, dim=0).reshape(
                 batch_size, 3, 3).float()
         else:
-            R_bg = torch.eye(3).unsqueeze(0).repeat(batch_size, 1, 1).float()
+            bg_rotations = torch.eye(3).unsqueeze(0).repeat(batch_size, 1, 1).float()
         if to_device:
-            R_bg = R_bg.to(self.device)
-        return R_bg
+            bg_rotations = bg_rotations.to(self.device)
+        return bg_rotations
 
     def sample_random_transformations(self, batch_size=32, to_device=True):
         device = self.device
-        s, t, R = self.bounding_box_generator(batch_size)
+        sizes, translations, rotations = self.bounding_box_generator(batch_size)
         if to_device:
-            s, t, R = s.to(device), t.to(device), R.to(device)
-        return s, t, R
+            sizes, translations, rotations = sizes.to(device), translations.to(device), rotations.to(device)
+        return sizes, translations, rotations
 
     def add_noise_to_interval(self, di):
         di_mid = .5 * (di[..., 1:] + di[..., :-1])
@@ -164,7 +162,7 @@ class Generator(nn.Module):
         ti = di_low + (di_high - di_low) * noise
         return ti
 
-    def transform_points_to_box(self, p, transformations, box_idx=0,
+    def transform_points_to_box(self, p, transformations, box_idx,
                                 scale_factor=1.):
         bb_s, bb_t, bb_R = transformations
         p_box = (bb_R[:, box_idx] @ (p - bb_t[:, box_idx].unsqueeze(1)).permute(0, 2, 1)).permute(0, 2, 1) / \
@@ -192,14 +190,14 @@ class Generator(nn.Module):
         return p, r
 
     def get_evaluation_points(self, pixels_world, camera_world, di,
-                              transformations, i):
+                              transformations, box_idx):
         batch_size = pixels_world.shape[0]
         n_steps = di.shape[-1]
 
         pixels_world_i = self.transform_points_to_box(
-            pixels_world, transformations, i)
+            pixels_world, transformations, box_idx)
         camera_world_i = self.transform_points_to_box(
-            camera_world, transformations, i)
+            camera_world, transformations, box_idx)
         ray_i = pixels_world_i - camera_world_i
 
         p_i = camera_world_i.unsqueeze(-2).contiguous() + \
@@ -265,14 +263,14 @@ class Generator(nn.Module):
                                invert_y_axis=False)[1].to(device)
         pixels[..., -1] *= -1.
         # Project to 3D world
-        pixels_world = image_points_to_world(
+        pixel_pos_wc = image_points_to_world(
             pixels, camera_mat,
             world_mat)
-        camera_world = origin_to_world(
+        camera_pos_wc = origin_to_world(
             n_points, camera_mat,
             world_mat)
 
-        ray_vector = pixels_world - camera_world
+        ray_vector = pixel_pos_wc - camera_pos_wc
         # batch_size x n_points x n_steps
         di = depth_range[0] + \
              torch.linspace(0., 1., steps=n_steps).reshape(1, 1, -1) * (
@@ -289,7 +287,8 @@ class Generator(nn.Module):
             n_boxes = 0
         for obj_i in range(n_objects):
             if obj_i < n_boxes:  # Object
-                point_pos_wc_i, ray_direction_wc_i = self.get_evaluation_points(pixels_world, camera_world, di,
+                # transform points w.r.t each object
+                point_pos_wc_i, ray_direction_wc_i = self.get_evaluation_points(pixel_pos_wc, camera_pos_wc, di,
                                                                                 transformations, obj_i)
                 logging.debug(f"point pos wc i shape = {point_pos_wc_i.shape},"
                               f"ray dir wc i shape = {ray_direction_wc_i.shape}")
@@ -312,7 +311,7 @@ class Generator(nn.Module):
                 density_i = density_i.reshape(batch_size, n_points, n_steps)
                 feature_i = feature_i.reshape(batch_size, n_points, n_steps, -1)
             else:  # Background
-                p_bg, r_bg = self.get_evaluation_points_bg(pixels_world, camera_world, di, bg_rotation)
+                p_bg, r_bg = self.get_evaluation_points_bg(pixel_pos_wc, camera_pos_wc, di, bg_rotation)
                 feature_i, density_i = self.background_generator(p_bg,
                                                                  r_bg,
                                                                  bg_shape_latent,

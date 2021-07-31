@@ -23,14 +23,14 @@ def get_camera_mat(fov=49.13, invert=True):
 
 def get_random_pose(range_u, range_v, range_radius, batch_size=32,
                     invert=False):
-    loc = sample_on_sphere(range_u, range_v, size=(batch_size))
+    location = sample_on_sphere(range_u, range_v, batch_size=(batch_size))
     radius = range_radius[0] + \
         torch.rand(batch_size) * (range_radius[1] - range_radius[0])
-    loc = loc * radius.unsqueeze(-1)
-    R = look_at(loc)
+    location = location * radius.unsqueeze(-1)
+    R = look_at(location)
     RT = torch.eye(4).reshape(1, 4, 4).repeat(batch_size, 1, 1)
     RT[:, :3, :3] = R
-    RT[:, :3, -1] = loc
+    RT[:, :3, -1] = location
 
     if invert:
         RT = torch.inverse(RT)
@@ -41,7 +41,7 @@ def get_middle_pose(range_u, range_v, range_radius, batch_size=32,
                     invert=False):
     u_m, u_v, r_v = sum(range_u) * 0.5, sum(range_v) * \
         0.5, sum(range_radius) * 0.5
-    loc = sample_on_sphere((u_m, u_m), (u_v, u_v), size=(batch_size))
+    loc = sample_on_sphere((u_m, u_m), (u_v, u_v), batch_size=(batch_size))
     radius = torch.ones(batch_size) * r_v
     loc = loc * radius.unsqueeze(-1)
     R = look_at(loc)
@@ -63,7 +63,7 @@ def get_camera_pose(range_u, range_v, range_r, val_u=0.5, val_v=0.5, val_r=0.5,
     v = v0 + val_v * vr
     r = r0 + val_r * rr
 
-    loc = sample_on_sphere((u, u), (v, v), size=(batch_size))
+    loc = sample_on_sphere((u, u), (v, v), batch_size=(batch_size))
     radius = torch.ones(batch_size) * r
     loc = loc * radius.unsqueeze(-1)
     R = look_at(loc)
@@ -85,10 +85,10 @@ def to_sphere(u, v):
     return np.stack([cx, cy, cz], axis=-1)
 
 
-def sample_on_sphere(range_u=(0, 1), range_v=(0, 1), size=(1,),
+def sample_on_sphere(range_u=(0, 1), range_v=(0, 1), batch_size=(1,),
                      to_pytorch=True):
-    u = np.random.uniform(*range_u, size=size)
-    v = np.random.uniform(*range_v, size=size)
+    u = np.random.uniform(*range_u, size=batch_size)
+    v = np.random.uniform(*range_v, size=batch_size)
 
     sample = to_sphere(u, v)
     if to_pytorch:
