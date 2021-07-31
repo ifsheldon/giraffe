@@ -86,7 +86,7 @@ def transform_to_world(pixels, depth, camera_mat, world_mat, scale_mat=None,
             camera_mat.shape[0], 1, 1).to(camera_mat.device)
 
     # Convert to pytorch
-    pixels, is_numpy = to_pytorch(pixels, True)
+    pixels = to_pytorch(pixels)
     depth = to_pytorch(depth)
     camera_mat = to_pytorch(camera_mat)
     world_mat = to_pytorch(world_mat)
@@ -114,9 +114,6 @@ def transform_to_world(pixels, depth, camera_mat, world_mat, scale_mat=None,
 
     # Transform p_world back to 3D coordinates
     p_world = p_world[:, :3].permute(0, 2, 1)
-
-    if is_numpy:
-        p_world = p_world.numpy()
     return p_world
 
 
