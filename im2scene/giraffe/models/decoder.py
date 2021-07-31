@@ -116,31 +116,31 @@ class Decoder(nn.Module):
                 dim=-1) for i in range(L)], dim=-1)
         return p_transformed
 
-    def forward(self, p_in, ray_d, z_shape=None, z_app=None, **kwargs):
+    def forward(self, p_in, ray_d, shape_latent=None, appearance_latent=None, **kwargs):
         activation = F.relu
         if self.z_dim > 0:
             batch_size = p_in.shape[0]
-            if z_shape is None:
-                z_shape = torch.randn(batch_size, self.z_dim).to(p_in.device)
-            if z_app is None:
-                z_app = torch.randn(batch_size, self.z_dim).to(p_in.device)
+            if shape_latent is None:
+                shape_latent = torch.randn(batch_size, self.z_dim).to(p_in.device)
+            if appearance_latent is None:
+                appearance_latent = torch.randn(batch_size, self.z_dim).to(p_in.device)
         p = self.transform_points(p_in)
         net = self.fc_in(p)
-        if z_shape is not None:
-            net = net + self.fc_z(z_shape).unsqueeze(1)
+        if shape_latent is not None:
+            net = net + self.fc_z(shape_latent).unsqueeze(1)
         net = activation(net)
 
         skip_idx = 0
         for idx, layer in enumerate(self.blocks):
             net = activation(layer(net))
             if (idx + 1) in self.skips and (idx < len(self.blocks) - 1):
-                net = net + self.fc_z_skips[skip_idx](z_shape).unsqueeze(1)
+                net = net + self.fc_z_skips[skip_idx](shape_latent).unsqueeze(1)
                 net = net + self.fc_p_skips[skip_idx](p)
                 skip_idx += 1
         sigma_out = self.sigma_out(net).squeeze(-1)  # volume density prediction
 
         net = self.feat_view(net)
-        net = net + self.fc_z_view(z_app).unsqueeze(1)
+        net = net + self.fc_z_view(appearance_latent).unsqueeze(1)
         if self.use_viewdirs and ray_d is not None:
             ray_d = ray_d / torch.norm(ray_d, dim=-1, keepdim=True)
             ray_d = self.transform_points(ray_d, views=True)

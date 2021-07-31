@@ -254,10 +254,10 @@ class Generator(nn.Module):
         n_steps = self.n_ray_samples
         depth_range = self.depth_range
         n_points = res * res
-        z_shape_obj, z_app_obj, z_shape_bg, z_app_bg = latent_codes
+        obj_shape_latent, obj_appearance_latent, bg_shape_latent, bg_appearance_latent = latent_codes
         camera_mat, world_mat = camera_matrices
-        batch_size = z_shape_obj.shape[0]
-        n_boxes = z_shape_obj.shape[1]
+        batch_size = obj_shape_latent.shape[0]
+        n_boxes = obj_shape_latent.shape[1]
         assert (not (not_render_background and only_render_background))
 
         # Arrange Pixels
@@ -295,8 +295,8 @@ class Generator(nn.Module):
                               f"ray dir wc i shape = {ray_direction_wc_i.shape}")
                 feature_i, density_i = self.decoder(point_pos_wc_i,
                                                     ray_direction_wc_i,
-                                                    z_shape_obj[:, obj_i],
-                                                    z_app_obj[:, obj_i])  # TODO: check what this outputs
+                                                    obj_shape_latent[:, obj_i],
+                                                    obj_appearance_latent[:, obj_i])  # TODO: check what this outputs
                 logging.debug(f"feature shape = {feature_i.shape}, density shape = {density_i.shape}")
                 if mode == 'training':
                     # As done in NeRF, add noise during training
@@ -315,8 +315,8 @@ class Generator(nn.Module):
                 p_bg, r_bg = self.get_evaluation_points_bg(pixels_world, camera_world, di, bg_rotation)
                 feature_i, density_i = self.background_generator(p_bg,
                                                                  r_bg,
-                                                                 z_shape_bg,
-                                                                 z_app_bg)
+                                                                 bg_shape_latent,
+                                                                 bg_appearance_latent)
                 density_i = density_i.reshape(batch_size, n_points, n_steps)
                 feature_i = feature_i.reshape(batch_size, n_points, n_steps, -1)
 
