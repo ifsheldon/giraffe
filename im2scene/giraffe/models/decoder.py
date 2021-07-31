@@ -117,7 +117,7 @@ class Decoder(nn.Module):
         return p_transformed
 
     def forward(self, p_in, ray_d, z_shape=None, z_app=None, **kwargs):
-        a = F.relu
+        activation = F.relu
         if self.z_dim > 0:
             batch_size = p_in.shape[0]
             if z_shape is None:
@@ -128,11 +128,11 @@ class Decoder(nn.Module):
         net = self.fc_in(p)
         if z_shape is not None:
             net = net + self.fc_z(z_shape).unsqueeze(1)
-        net = a(net)
+        net = activation(net)
 
         skip_idx = 0
         for idx, layer in enumerate(self.blocks):
-            net = a(layer(net))
+            net = activation(layer(net))
             if (idx + 1) in self.skips and (idx < len(self.blocks) - 1):
                 net = net + self.fc_z_skips[skip_idx](z_shape).unsqueeze(1)
                 net = net + self.fc_p_skips[skip_idx](p)
@@ -145,10 +145,10 @@ class Decoder(nn.Module):
             ray_d = ray_d / torch.norm(ray_d, dim=-1, keepdim=True)
             ray_d = self.transform_points(ray_d, views=True)
             net = net + self.fc_view(ray_d)
-            net = a(net)
+            net = activation(net)
             if self.n_blocks_view > 1:
                 for layer in self.blocks_view:
-                    net = a(layer(net))
+                    net = activation(layer(net))
         feat_out = self.feat_out(net)  # feature field output
 
         if self.final_sigmoid_activation:
