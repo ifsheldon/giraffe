@@ -193,10 +193,10 @@ def image_points_to_world(image_points, camera_mat, world_mat, scale_mat=None,
     batch_size, n_pts, dim = image_points.shape
     assert(dim == 2)
     device = image_points.device
-    d_image = torch.ones(batch_size, n_pts, 1).to(device)
+    depth_image = torch.ones(batch_size, n_pts, 1).to(device)
     if negative_depth:
-        d_image *= -1.
-    return transform_to_world(image_points, d_image, camera_mat, world_mat,
+        depth_image *= -1.
+    return transform_to_world(image_points, depth_image, camera_mat, world_mat,
                               scale_mat, invert=invert)
 
 
