@@ -286,7 +286,7 @@ class Generator(nn.Module):
                 feature_i, density_i = self.decoder(point_pos_wc_i,
                                                     ray_direction_wc_i,
                                                     obj_shape_latent[:, obj_i],
-                                                    obj_appearance_latent[:, obj_i])  # TODO: check what this outputs
+                                                    obj_appearance_latent[:, obj_i])
                 logging.debug(f"feature shape = {feature_i.shape}, density shape = {density_i.shape}")
                 if mode == 'training':
                     # As done in NeRF, add noise during training

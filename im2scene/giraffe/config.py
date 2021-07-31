@@ -16,7 +16,6 @@ def get_model(cfg, device=None, len_dataset=0, **kwargs):
     decoder = cfg['model']['decoder']  # "simple" in default.yaml
     discriminator = cfg['model']['discriminator']  # "dc" in default.yaml
     generator = cfg['model']['generator']  # "simple" in default.yaml
-    # TODO: what is the bounding box generator here?
     background_generator = cfg['model']['background_generator']  # "simple" in default.yaml
     decoder_kwargs = cfg['model']['decoder_kwargs']  # {} in default.yaml
     discriminator_kwargs = cfg['model']['discriminator_kwargs']  # {} in default.yaml
