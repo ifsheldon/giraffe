@@ -116,18 +116,11 @@ class Decoder(nn.Module):
                 dim=-1) for i in range(L)], dim=-1)
         return p_transformed
 
-    def forward(self, p_in, ray_d, shape_latent=None, appearance_latent=None, **kwargs):
+    def forward(self, p_in, ray_d, shape_latent, appearance_latent, **kwargs):
         activation = F.relu
-        if self.z_dim > 0:
-            batch_size = p_in.shape[0]
-            if shape_latent is None:
-                shape_latent = torch.randn(batch_size, self.z_dim).to(p_in.device)
-            if appearance_latent is None:
-                appearance_latent = torch.randn(batch_size, self.z_dim).to(p_in.device)
         p = self.transform_points(p_in)
         net = self.fc_in(p)
-        if shape_latent is not None:
-            net = net + self.fc_z(shape_latent).unsqueeze(1)
+        net = net + self.fc_z(shape_latent).unsqueeze(1)
         net = activation(net)
 
         skip_idx = 0
