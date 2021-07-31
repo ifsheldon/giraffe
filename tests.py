@@ -17,7 +17,8 @@ if __name__ == "__main__":
                      "downscale_p_by": 12,
                      "skips": []}
     bg_gen = decoder.Decoder(z_dim=z_dim_bg, **bg_gen_kwargs)
-    bounding_box_gen = bounding_box_generator.BoundingBoxGenerator(z_dim=z_dim)
+    bounding_box_gen = bounding_box_generator.BoundingBoxGenerator(z_dim=z_dim,
+                                                                   n_boxes=1)
     decoder = decoder.Decoder(z_dim=z_dim)
 
     renderer = Generator(device,
@@ -26,6 +27,10 @@ if __name__ == "__main__":
                          background_generator=bg_gen,
                          bounding_box_generator=bounding_box_gen,
                          decoder=decoder,
+                         resolution_vol=4,
+                         n_ray_samples=1,
+                         fov=45.,
                          neural_renderer=None)
-    rendered_img = renderer()
+    rendered_img = renderer(batch_size=1,
+                            mode="test")
     print(rendered_img.shape)
