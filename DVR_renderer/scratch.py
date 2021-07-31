@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -69,7 +71,13 @@ class Generator(nn.Module):
                 only_render_background=False):
         latent_codes = self.sample_latent_codes(batch_size)
         camera_matrices = self.sample_random_camera(batch_size)
+        logging.debug(f"\ncamera mat shape = {camera_matrices[0].shape}"
+                      f"\nworld mat shape = {camera_matrices[1].shape}")
         transformations = self.sample_random_transformations(batch_size)
+        sizes, translations, rotations = transformations
+        logging.debug(f"\nsizes shape = {sizes.shape}"
+                      f"\ntranslations shape = {translations.shape}"
+                      f"\nrotations shape = {rotations.shape}")
         bg_rotation = self.sample_random_bg_rotation(batch_size)
         rgb_v = self.volume_render_image(
             latent_codes, camera_matrices, transformations, bg_rotation,
@@ -198,7 +206,7 @@ class Generator(nn.Module):
               di.unsqueeze(-1).contiguous() * ray_i.unsqueeze(-2).contiguous()
         ray_i = ray_i.unsqueeze(-2).repeat(1, 1, n_steps, 1)
         assert (p_i.shape == ray_i.shape)
-
+        logging.debug(f"p_i and ray_i shape = {p_i.shape}")
         p_i = p_i.reshape(batch_size, -1, 3)
         ray_i = ray_i.reshape(batch_size, -1, 3)
 
@@ -270,6 +278,7 @@ class Generator(nn.Module):
              torch.linspace(0., 1., steps=n_steps).reshape(1, 1, -1) * (
                      depth_range[1] - depth_range[0])
         di = di.repeat(batch_size, n_points, 1).to(device)
+        logging.debug(f"di shape = {di.shape}")
         if mode == 'training':
             di = self.add_noise_to_interval(di)
 
@@ -280,18 +289,23 @@ class Generator(nn.Module):
             n_boxes = 0
         for obj_i in range(n_objects):
             if obj_i < n_boxes:  # Object
-                p_i, r_i = self.get_evaluation_points(pixels_world, camera_world, di, transformations, obj_i)
-                feature_i, density_i = self.decoder(p_i,
-                                                    r_i,
+                point_pos_wc_i, ray_direction_wc_i = self.get_evaluation_points(pixels_world, camera_world, di,
+                                                                                transformations, obj_i)
+                logging.debug(f"point pos wc i shape = {point_pos_wc_i.shape},"
+                              f"ray dir wc i shape = {ray_direction_wc_i.shape}")
+                feature_i, density_i = self.decoder(point_pos_wc_i,
+                                                    ray_direction_wc_i,
                                                     z_shape_obj[:, obj_i],
                                                     z_app_obj[:, obj_i])  # TODO: check what this outputs
+                logging.debug(f"feature shape = {feature_i.shape}, density shape = {density_i.shape}")
                 if mode == 'training':
                     # As done in NeRF, add noise during training
                     density_i += torch.randn_like(density_i)
 
                 # Mask out values outside
                 padd = 0.1
-                mask_box = torch.all(p_i <= 1. + padd, dim=-1) & torch.all(p_i >= -1. - padd, dim=-1)
+                mask_box = torch.all(point_pos_wc_i <= 1. + padd, dim=-1) & \
+                           torch.all(point_pos_wc_i >= -1. - padd, dim=-1)
                 density_i[mask_box == 0] = 0.
 
                 # Reshape
@@ -302,7 +316,7 @@ class Generator(nn.Module):
                 feature_i, density_i = self.background_generator(p_bg,
                                                                  r_bg,
                                                                  z_shape_bg,
-                                                                 z_app_bg)  # TODO: check what this outputs
+                                                                 z_app_bg)
                 density_i = density_i.reshape(batch_size, n_points, n_steps)
                 feature_i = feature_i.reshape(batch_size, n_points, n_steps, -1)
 
