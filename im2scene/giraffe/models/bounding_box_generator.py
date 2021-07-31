@@ -1,7 +1,8 @@
 import numpy as np
-import torch.nn as nn
 import torch
+import torch.nn as nn
 from scipy.spatial.transform import Rotation as Rot
+
 from im2scene.camera import get_rotation_matrix
 
 
@@ -42,11 +43,9 @@ class BoundingBoxGenerator(nn.Module):
         self.scale_range = (torch.tensor(scale_range_max) -
                             torch.tensor(scale_range_min)).reshape(1, 1, 3)
 
-        self.translation_min = torch.tensor(
-            translation_range_min).reshape(1, 1, 3)
-        self.translation_range = (torch.tensor(
-            translation_range_max) - torch.tensor(translation_range_min)
-        ).reshape(1, 1, 3)
+        self.translation_min = torch.tensor(translation_range_min).reshape(1, 1, 3)
+        self.translation_range = (torch.tensor(translation_range_max) - torch.tensor(translation_range_min)
+                                  ).reshape(1, 1, 3)
 
         self.z_level_plane = z_level_plane
         self.rotation_range = rotation_range
@@ -61,9 +60,10 @@ class BoundingBoxGenerator(nn.Module):
                 # We multiply by ~0.23 as this is multiplier of the original clevr
                 # world and our world scale
                 self.prior = torch.from_numpy(prior).float() * 0.2378777237835723
-            except Exception as e: 
+            except Exception as e:
                 print("WARNING: Clevr prior location file could not be loaded!")
-                print("For rendering, this is fine, but for training, please download the files using the download script.")
+                print(
+                    "For rendering, this is fine, but for training, please download the files using the download script.")
                 self.prior = None
         else:
             self.prior = None
@@ -99,7 +99,7 @@ class BoundingBoxGenerator(nn.Module):
         values = [r_range[0] + v * (r_range[1] - r_range[0]) for v in val]
         r = torch.cat([get_rotation_matrix(
             value=v, batch_size=batch_size).unsqueeze(1) for v in values],
-            dim=1)
+                      dim=1)
         r = r.float()
         return r
 
@@ -122,36 +122,39 @@ class BoundingBoxGenerator(nn.Module):
             s_rand = torch.rand(batch_size, n_boxes, 1)
         else:
             s_rand = torch.rand(batch_size, n_boxes, 3)
-        s = self.scale_min + s_rand * self.scale_range
+        sizes = self.scale_min + s_rand * self.scale_range
 
         # Sample translations
         if self.prior is not None:
             idx = np.random.randint(self.prior.shape[0], size=(batch_size))
-            t = self.prior[idx]
+            translations = self.prior[idx]
         else:
-            t = self.translation_min + \
-                torch.rand(batch_size, n_boxes, 3) * self.translation_range
+            translations = self.translation_min + \
+                           torch.rand(batch_size, n_boxes, 3) * self.translation_range
             if self.check_collison:
-                is_free = self.check_for_collison(s, t)
+                is_free = self.check_for_collison(sizes, translations)
                 while not torch.all(is_free):
                     t_new = self.translation_min + \
-                        torch.rand(batch_size, n_boxes, 3) * \
-                        self.translation_range
-                    t[is_free == 0] = t_new[is_free == 0]
-                    is_free = self.check_for_collison(s, t)
+                            torch.rand(batch_size, n_boxes, 3) * \
+                            self.translation_range
+                    translations[is_free == 0] = t_new[is_free == 0]
+                    is_free = self.check_for_collison(sizes, translations)
             if self.object_on_plane:
-                t[..., -1] = self.z_level_plane
+                translations[..., -1] = self.z_level_plane
 
-        def r_val(): return self.rotation_range[0] + np.random.rand() * (
-            self.rotation_range[1] - self.rotation_range[0])
-        R = [torch.from_numpy(
+        # sample rotations
+        def r_val():
+            return self.rotation_range[0] + np.random.rand() * (
+                    self.rotation_range[1] - self.rotation_range[0])
+
+        rotations = [torch.from_numpy(
             Rot.from_euler('z', r_val() * 2 * np.pi).as_dcm())
-            for i in range(batch_size * self.n_boxes)]
-        R = torch.stack(R, dim=0).reshape(
+            for _ in range(batch_size * self.n_boxes)]
+        rotations = torch.stack(rotations, dim=0).reshape(
             batch_size, self.n_boxes, -1).cuda().float()
-        return s, t, R
+        return sizes, translations, rotations
 
     def forward(self, batch_size=32):
-        s, t, R = self.get_random_offset(batch_size)
-        R = R.reshape(batch_size, self.n_boxes, 3, 3)
-        return s, t, R
+        sizes, translations, rotations = self.get_random_offset(batch_size)
+        rotations = rotations.reshape(batch_size, self.n_boxes, 3, 3)
+        return sizes, translations, rotations
