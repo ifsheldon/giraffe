@@ -270,6 +270,10 @@ class Generator(nn.Module):
             n_points, camera_mat,
             world_mat)
 
+        logging.debug(f"pixel_pos_wc shape = {pixel_pos_wc.shape}")
+        logging.debug(f"camera_pos_wc shape = {camera_pos_wc.shape}")
+        logging.debug(f"camera_pos_wc = {camera_pos_wc}")
+
         ray_vector = pixel_pos_wc - camera_pos_wc
         # batch_size x n_points x n_steps
         di = depth_range[0] + \
