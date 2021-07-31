@@ -27,14 +27,12 @@ class Generator(nn.Module):
         range_radius(tuple): radius range
         depth_range (tuple): near and far depth plane
         background_generator (nn.Module): background generator
-        bounding_box_generaor (nn.Module): bounding box generator
+        bounding_box_generator (nn.Module): bounding box generator
         resolution_vol (int): resolution of volume-rendered image
         neural_renderer (nn.Module): neural renderer
         fov (float): field of view
         background_rotation_range (tuple): background rotation range
          (0 - 1)
-        sample_object-existance (bool): whether to sample the existance
-            of objects; only used for clevr2345
         use_max_composition (bool): whether to use the max
             composition operator instead
     '''
@@ -46,7 +44,7 @@ class Generator(nn.Module):
                  bounding_box_generator=None, resolution_vol=16,
                  neural_renderer=None,
                  fov=49.13,
-                 backround_rotation_range=[0., 0.],
+                 background_rotation_range=[0., 0.],
                  use_max_composition=False):
         super().__init__()
         self.device = device
@@ -56,7 +54,7 @@ class Generator(nn.Module):
         self.resolution_vol = resolution_vol
         self.range_radius = range_radius
         self.depth_range = depth_range
-        self.backround_rotation_range = backround_rotation_range
+        self.background_rotation_range = background_rotation_range
         self.z_dim = z_dim
         self.z_dim_bg = z_dim_bg
         # self.use_max_composition = use_max_composition
@@ -114,17 +112,6 @@ class Generator(nn.Module):
             z = z.to(self.device)
         return z
 
-    # reserved
-    def get_vis_dict(self, batch_size=32):
-        vis_dict = {
-            'batch_size': batch_size,
-            'latent_codes': self.sample_latent_codes(batch_size),
-            'camera_matrices': self.sample_random_camera(batch_size),
-            'transformations': self.sample_random_transformations(batch_size),
-            'bg_rotation': self.sample_random_bg_rotation(batch_size)
-        }
-        return vis_dict
-
     def sample_random_camera(self, batch_size=32, to_device=True):
         camera_mat = self.camera_matrix.repeat(batch_size, 1, 1)
         world_mat = get_random_pose(
@@ -134,8 +121,8 @@ class Generator(nn.Module):
         return camera_mat, world_mat
 
     def sample_random_bg_rotation(self, batch_size, to_device=True):
-        if self.backround_rotation_range != [0., 0.]:
-            bg_r = self.backround_rotation_range
+        if self.background_rotation_range != [0., 0.]:
+            bg_r = self.background_rotation_range
             r_random = bg_r[0] + np.random.rand() * (bg_r[1] - bg_r[0])
             bg_rotations = [torch.from_numpy(Rot.from_euler('z', r_random * 2 * np.pi).as_dcm())
                             for _ in range(batch_size)]
@@ -342,6 +329,16 @@ class Generator(nn.Module):
         feat_map = feat_map.permute(0, 1, 3, 2)  # new to flip x/y
         return feat_map
 
+    # reserved
+    def get_vis_dict(self, batch_size=32):
+        vis_dict = {
+            'batch_size': batch_size,
+            'latent_codes': self.sample_latent_codes(batch_size),
+            'camera_matrices': self.sample_random_camera(batch_size),
+            'transformations': self.sample_random_transformations(batch_size),
+            'bg_rotation': self.sample_random_bg_rotation(batch_size)
+        }
+        return vis_dict
     # # reserved for deterministic
     # def get_camera(self, val_u=0.5, val_v=0.5, val_r=0.5, batch_size=32,
     #                to_device=True):
